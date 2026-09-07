@@ -1,39 +1,47 @@
 ---
 title: "Get started with AI Workspace"
-description: "Run AI Workspace locally with Docker Compose, connect an AI Gateway, configure an LLM provider, and run your first prompt through it."
+description: "Run AI Workspace locally with Docker Compose, connect an AI Gateway, configure an LLM provider and an MCP proxy, and call both through it."
 canonical_url: https://wso2.com/api-platform/docs/ai-workspace/1.0.0/getting-started/
 md_url: https://wso2.com/api-platform/docs/ai-workspace/next/getting-started.md
 tags:
   - cloud
   - ai-workspace
+  - ai-gateway
+  - llm
+  - mcp
   - quickstart
   - docker
 author: WSO2 API Platform Documentation Team
-last_updated: 2026-08-31
+last_updated: 2026-09-07
 content_type: "quickstart"
 ---
 
 # Get started with AI Workspace
 
-AI Workspace lets you manage the AI Gateways and large language model (LLM) providers your applications call. It's the control plane that configures those gateways and providers, then deploys the configuration to the gateway.
+AI Workspace lets you manage the AI Gateways, large language model (LLM) providers, and Model Context Protocol (MCP) servers your applications call. It's the control plane that configures those gateways, providers, and proxies, then deploys the configuration to the gateway.
 
 ## Overview
 
 This guide walks you through:
 
-- [Part 1: Deploy AI Workspace](#part-1-deploy-ai-workspace)
-- [Part 2: Connect an AI Gateway](#part-2-connect-an-ai-gateway)
-- [Part 3: Configure an LLM provider](#part-3-configure-an-llm-provider)
-- [Part 4: Run your first prompt](#part-4-run-your-first-prompt)
+1. [Deploy AI Workspace](#part-1-deploy-ai-workspace): run the stack locally and sign in.
+2. [Connect an AI Gateway](#part-2-connect-an-ai-gateway): register a gateway and start it.
+3. [Configure an LLM provider](#part-3-configure-an-llm-provider): connect a provider, add a model, deploy it, and generate an API key.
+4. [Run your first prompt](#part-4-run-your-first-prompt): send a real chat completion request.
+5. [Configure an MCP proxy](#part-5-configure-an-mcp-proxy): proxy a sample MCP server and deploy it.
+6. [Call your first MCP tool](#part-6-call-your-first-mcp-tool): send a real tool call and confirm the response.
 
-By the end, you'll have a local AI Workspace deployment managing an AI Gateway connected to an LLM provider. You'll send a real chat completion request through the resulting endpoint.
+By the end, you'll have a local AI Workspace deployment managing an AI Gateway connected to both an LLM provider and an MCP server. You'll send a real chat completion request and a real tool call through the resulting endpoints.
 
 It's written for platform engineers, developers, and anyone evaluating a self-hosted AI governance layer. No prior WSO2 API Platform experience is required. For optional background on the concepts this guide uses, see:
 
 - [AI Workspace and how it relates to the AI Gateway](overview.md)
 - [LLM providers](llm-providers/overview.md)
+- [MCP proxies](mcp-proxies/overview.md)
 
-## Prerequisites
+## Before you start
+
+Complete the following prerequisites:
 
 - Install [Docker](https://docs.docker.com/get-docker/) with the Compose plugin, or another Compose-compatible container runtime such as Podman.
 - Free up ports 9643 and 9243 on your machine. If either one is taken, see [Change the ports AI Workspace uses](setting-up/ports.md).
@@ -165,7 +173,7 @@ This guide doesn't follow the wizard directly. It walks through the same underly
 
 ## Part 2: Connect an AI Gateway
 
-An AI Gateway is the runtime that routes requests to LLM providers. You need at least one connected and active before you can send a real request. This part registers a gateway in AI Workspace, then installs and starts its runtime so it shows a status of **Active**.
+An AI Gateway is the runtime that routes requests to LLM providers and MCP servers. You need at least one connected and active before you can send a real request. This part registers a gateway in AI Workspace, then installs and starts its runtime so it shows a status of **Active**.
 
 ### Step 7: Register the gateway
 
@@ -175,7 +183,7 @@ An AI Gateway is the runtime that routes requests to LLM providers. You need at 
     - **Gateway Version**: leave this at its default selection.
     - **Name**: a unique name, for example `local-test-gateway`.
     - **Description**: optional.
-    - **URL**: the address the gateway is reachable at once it's running, for example `https://localhost:8443`. AI Workspace uses this to build the Invoke URL you'll call from your own terminal in [Part 4](#part-4-run-your-first-prompt). Use an address your terminal can actually reach, not `host.docker.internal`. That hostname only resolves from inside a container, not from your host machine.
+    - **URL**: the address the gateway is reachable at once it's running, for example `https://localhost:8443`. AI Workspace uses this to build the Invoke URL and MCP Proxy URL you'll call from your own terminal later in this guide. Use an address your terminal can actually reach, not `host.docker.internal`. That hostname only resolves from inside a container, not from your host machine.
 
 4. Click **Add Gateway**.
 
@@ -304,7 +312,7 @@ All requests to the gateway authenticate with the `X-API-Key` header by default.
 The following example assumes the Mistral AI provider from Part 3. If you configured a different kind of provider instead, this exact request path and body don't apply. Anthropic, Gemini, Azure OpenAI, and Azure AI Foundry each use their own native request shape. See [Invoke providers and proxies via SDKs](using-sdks.md) for the equivalent call. AWS Bedrock isn't covered there; check your model's Bedrock API documentation for the request format.
 
 ```bash
-curl -X POST "<INVOKE_URL>/v1/chat/completions" \
+curl -k -X POST "<INVOKE_URL>/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: <YOUR_GENERATED_API_KEY>" \
   -d '{
@@ -314,6 +322,9 @@ curl -X POST "<INVOKE_URL>/v1/chat/completions" \
     ]
   }'
 ```
+
+!!! tip "Certificate warning?"
+    The `-k` flag accepts the gateway's self-signed certificate, the one its own `setup.sh` generated in [Step 8](#step-8-install-and-start-the-gateway-runtime).
 
 A successful response returns `200 OK` with a chat completion:
 
@@ -341,6 +352,93 @@ Your response's `id`, `created` timestamp, and `content` differ. That's expected
 
 At this point, you have a local AI Workspace deployment managing an AI Gateway connected to Mistral AI. You just sent a real chat completion through that gateway with a key you generated yourself. AI Workspace, the AI Gateway, and the upstream provider all worked together to complete that request.
 
+## Part 5: Configure an MCP proxy
+
+An MCP proxy exposes a Model Context Protocol (MCP) server through AI Workspace, so the tools, resources, and prompts it provides go through the same authentication and governance as your LLM traffic. This part creates a proxy from a hosted sample MCP server, then deploys it to your gateway.
+
+### Step 13: Create an MCP proxy
+
+AI Workspace includes a hosted sample MCP server, so you don't need to run one yourself. Because AI Workspace runs on your own machine in this guide, it can also reach an MCP server you run locally. If you have one, paste its URL instead of using the sample.
+
+1. Navigate to **MCP Proxies** in the left navigation menu, then click **Create MCP Proxy**.
+2. Click **Try with Sample URL**, then click **Fetch Server Info**.
+
+    AI Workspace fetches the server's capabilities and lists them: 4 tools (including `echo` and `add`), 10 resources, and 3 prompts.
+
+3. Click **Next**.
+4. Fill in the proxy details:
+    - **Name**: a unique name, for example `everything-mcp`.
+    - **Version**: pre-filled, for example `v1.0`.
+    - **Description**: optional.
+    - **Context**: pre-filled from the name, for example `/default/everything-mcp`.
+    - **Target**: pre-filled with the server URL from step 2.
+5. Click **Create**.
+
+AI Workspace shows a progress tracker with the remaining steps: **Configure Policies** and **Deploy to Gateway & Test**. See [MCP proxies overview](mcp-proxies/overview.md) for what each capability type means.
+
+### Step 14: Deploy the proxy to your gateway
+
+1. On the proxy's page, click **Deploy to Gateway** in the top right corner. This opens a dedicated deployment page listing your gateways.
+2. Confirm the gateway from [Part 2](#part-2-connect-an-ai-gateway) shows a status of **Active**, then click **Deploy** next to it.
+
+The deployment status changes to **Active** within a few seconds:
+
+![Deploy to Gateway page for an MCP proxy, showing the deployment status as Active](../../assets/img/ai-gateway/standalone-ai-workspace/quick-start-guide/mcp-proxy-deploy.png)
+
+## Part 6: Call your first MCP tool
+
+This part sends a real tool call through your deployed MCP proxy and confirms the response.
+
+Go back to the proxy's **Overview** tab. Under **MCP Proxy URL**, copy the URL shown, for example `https://localhost:8443/default/everything-mcp/mcp`.
+
+An MCP client starts every session with an `initialize` request. Replace `<MCP_PROXY_URL>` with the URL you copied:
+
+```bash
+curl -ki -X POST "<MCP_PROXY_URL>" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {},
+      "clientInfo": { "name": "getting-started", "version": "1.0.0" }
+    }
+  }'
+```
+
+The `-i` flag prints the response headers. Copy the `Mcp-Session-Id` value. You need it for the next request.
+
+Call the sample `add` tool. Replace `<MCP_PROXY_URL>` and `<SESSION_ID>` with your values:
+
+```bash
+curl -k -X POST "<MCP_PROXY_URL>" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: <SESSION_ID>" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": { "name": "add", "arguments": { "a": 4, "b": 5 } }
+  }'
+```
+
+A successful response returns `200 OK` with the tool's actual output:
+
+```text
+event: message
+data: {"result":{"content":[{"type":"text","text":"The sum of 4 and 5 is 9."}]},"jsonrpc":"2.0","id":2}
+```
+
+That result means your request reached the sample server's `add` tool and came back through the gateway. To explore the other tools interactively, point an MCP client such as [MCP Inspector](https://github.com/modelcontextprotocol/inspector) at the same URL.
+
+The sample proxy has no authentication policy, so these calls need no key. Add the [MCP Authentication policy](mcp-proxies/apply-policies.md) to require one.
+
+At this point, you also have that same AI Gateway routing governed traffic to an MCP server, alongside the LLM provider from Part 3. AI Workspace configures both from one place.
+
 ## Verify everything works end to end
 
 To confirm every piece is in place:
@@ -351,6 +449,8 @@ To confirm every piece is in place:
 - [ ] An LLM provider is configured with at least one model on its **Models** tab.
 - [ ] The provider is deployed to your gateway, with a deployment status of **Active**.
 - [ ] A generated API key successfully authenticates a real chat completion request through the gateway.
+- [ ] An MCP proxy is configured and deployed to your gateway, with a deployment status of **Active**.
+- [ ] An `initialize` request and a `tools/call` request both succeed against the MCP proxy's URL.
 
 ## Stopping AI Workspace
 
@@ -380,7 +480,7 @@ The AI Gateway you connected in [Part 2](#part-2-connect-an-ai-gateway) is a sep
 - [Configure an App LLM Proxy](llm-proxies/configure-proxy.md): add an application-specific endpoint on top of a provider, with its own guardrails and access rules
 - [Manage an App LLM Proxy](llm-proxies/manage-proxy.md): configure provider settings, resources, security, and guardrails for an existing proxy
 - [Invoke providers and proxies via SDKs](using-sdks.md): call your deployed endpoint from the OpenAI, Anthropic, Gemini, Mistral, Azure OpenAI (including Azure AI Foundry), or LangChain software development kits (SDKs)
-- [MCP Proxies overview](mcp-proxies/overview.md): govern access to a Model Context Protocol (MCP) server through the same gateway
+- [Apply MCP policies](mcp-proxies/apply-policies.md): add authentication, authorization, and access control to the MCP proxy you just created
 - [GenAI applications](genai-applications.md): group API keys under a named application for usage visibility and governance
 - [Change the ports AI Workspace uses](setting-up/ports.md): remap the default `9643` and `9243` ports
 - [Connect a database to the Platform API](setting-up/database.md): move off the default SQLite store to PostgreSQL or SQL Server for production
