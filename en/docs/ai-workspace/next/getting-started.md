@@ -173,7 +173,7 @@ This guide doesn't follow the wizard directly. It walks through the same underly
 
 ## Part 2: Connect an AI Gateway
 
-An AI Gateway is the runtime that routes requests to LLM providers and MCP servers. You need at least one connected and active before you can send a real request. This part registers a gateway in AI Workspace, then installs and starts its runtime so it shows a status of **Active**.
+An AI Gateway is the runtime that enforces authentication, rate limits, and guardrails while routing requests to LLM providers and MCP servers. AI Workspace configures it; you run it yourself, as a set of containers. You need at least one connected and active before you can send a real request. This part registers a gateway in AI Workspace, then installs and starts its runtime so it shows a status of **Active**.
 
 ### Step 7: Register the gateway
 
@@ -246,9 +246,11 @@ Give the gateway a few seconds to start and register itself. Back in AI Workspac
 
 ![AI Gateway detail page showing the Get Started panel with download and setup commands, and a green Active status badge after the gateway connects](../../assets/img/ai-gateway/standalone-ai-workspace/quick-start-guide/gateway-get-started-panel.png)
 
+Keep this gateway running for the rest of this guide.
+
 ## Part 3: Configure an LLM provider
 
-An LLM provider connects AI Workspace to an AI service platform, such as OpenAI, Anthropic, or Mistral AI. This part creates a provider, allows a model, deploys the provider to your gateway, and generates an API key.
+An LLM provider connects AI Workspace to an AI service platform, such as OpenAI, Anthropic, or Mistral AI. You give AI Workspace your provider credentials once; the clients that call your gateway never see them. For background, see [LLM providers](llm-providers/overview.md). This part creates a provider, allows a model, deploys the provider to your gateway, and generates an API key.
 
 ### Step 9: Configure an LLM provider
 
@@ -282,10 +284,12 @@ The provider's **Models** tab lists the models available through it.
 
 ### Step 11: Deploy the provider
 
+A provider isn't reachable until you deploy it to a running gateway.
+
 1. On the provider's page, click **Deploy to Gateway** in the top right corner. This opens a dedicated deployment page listing your gateways.
 2. Confirm the gateway from [Part 2](#part-2-connect-an-ai-gateway) shows a status of **Active**, then click **Deploy** next to it.
 
-The deployment status changes to **Active** within a few seconds, without needing to refresh the page:
+The deployment status changes to **Active** within a few seconds, without needing to refresh the page, and the running gateway logs `Configuration deployed successfully`:
 
 ![Deploy to Gateway page showing the deployment status as Active, with a deployment history entry](../../assets/img/ai-gateway/standalone-ai-workspace/quick-start-guide/provider-deployed-active.png)
 
@@ -293,7 +297,7 @@ The deployment status changes to **Active** within a few seconds, without needin
 
 The **API Keys** section on the provider's **Overview** tab only appears once the provider is deployed to at least one gateway. You won't see it before this point.
 
-1. Go back to the provider's **Overview** tab.
+1. Go back to the provider's **Overview** tab. After you deploy the provider, an **Invoke URL** section and an **API Keys** section appear.
 2. Under **Invoke URL**, select your gateway from the **Gateways** dropdown and copy the URL shown, for example `https://localhost:8443/mistral`.
 3. Under **API Keys**, click **Generate API Key**.
 4. Enter a **Key Name**, for example `quickstart-test-key`, and click **Generate**.
@@ -301,7 +305,7 @@ The **API Keys** section on the provider's **Overview** tab only appears once th
     ![Generate API Key dialog with a Key Name field, and Cancel and Generate buttons](../../assets/img/ai-gateway/standalone-ai-workspace/quick-start-guide/generate-api-key.png)
 
 !!! danger "Copy the key"
-    An API key is displayed only once, in a dialog that also shows a ready-to-run `curl` command using one of the provider's models. Store the key securely immediately. You can't retrieve it again, though you can always generate a new one.
+    An API key is displayed only once, in a dialog that also shows a ready-to-run `curl` command using one of the provider's models. Store the key securely immediately. You can't retrieve it again, though you can always generate a new one. It's also different from the Mistral API key you added earlier: the Mistral key authenticates AI Workspace to Mistral, while this key authenticates your own callers to the gateway.
 
 ## Part 4: Run your first prompt
 
@@ -354,7 +358,7 @@ At this point, you have a local AI Workspace deployment managing an AI Gateway c
 
 ## Part 5: Configure an MCP proxy
 
-An MCP proxy exposes a Model Context Protocol (MCP) server through AI Workspace, so the tools, resources, and prompts it provides go through the same authentication and governance as your LLM traffic. This part creates a proxy from a hosted sample MCP server, then deploys it to your gateway.
+An MCP proxy exposes a Model Context Protocol (MCP) server through AI Workspace, so any MCP client can discover the server's tools, resources, and prompts through the gateway, with the same authentication and governance as your LLM traffic. For background, see [MCP proxies](mcp-proxies/overview.md). This part creates a proxy from a hosted sample MCP server, then deploys it to your gateway.
 
 ### Step 13: Create an MCP proxy
 
@@ -374,14 +378,14 @@ AI Workspace includes a hosted sample MCP server, so you don't need to run one y
     - **Target**: pre-filled with the server URL from step 2.
 5. Click **Create**.
 
-AI Workspace shows a progress tracker with the remaining steps: **Configure Policies** and **Deploy to Gateway & Test**. See [MCP proxies overview](mcp-proxies/overview.md) for what each capability type means.
+AI Workspace shows a progress tracker with the remaining steps: **Configure Policies**, **Deploy to Gateway & Test**, and **Publish to MCP Hub**. See [MCP proxies overview](mcp-proxies/overview.md) for what each capability type means.
 
 ### Step 14: Deploy the proxy
 
 1. On the proxy's page, click **Deploy to Gateway** in the top right corner. This opens a dedicated deployment page listing your gateways.
 2. Confirm the gateway from [Part 2](#part-2-connect-an-ai-gateway) shows a status of **Active**, then click **Deploy** next to it.
 
-The deployment status changes to **Active** within a few seconds:
+The deployment status changes to **Active** within a few seconds, without needing to refresh the page, and the running gateway logs `Configuration deployed successfully` with `kind=Mcp`:
 
 ![Deploy to Gateway page for an MCP proxy, showing the deployment status as Active](../../assets/img/ai-gateway/standalone-ai-workspace/quick-start-guide/mcp-proxy-deploy.png)
 
@@ -389,7 +393,7 @@ The deployment status changes to **Active** within a few seconds:
 
 This part sends a real tool call through your deployed MCP proxy and confirms the response.
 
-Go back to the proxy's **Overview** tab. Under **MCP Proxy URL**, copy the URL shown, for example `https://localhost:8443/default/everything-mcp/mcp`.
+Go back to the proxy's **Overview** tab. Under **MCP Proxy URL**, select your gateway from the **Gateways** dropdown and copy the URL shown. It ends in `/mcp`, for example, `https://localhost:8443/default/everything-mcp/mcp`.
 
 Every MCP client starts a session with an `initialize` request before it can call a tool. Replace `<MCP_PROXY_URL>` with the URL you copied, then run:
 
@@ -477,6 +481,7 @@ The AI Gateway you connected in [Part 2](#part-2-connect-an-ai-gateway) is a sep
 ## Next steps
 
 - [Manage an LLM provider](llm-providers/manage-provider.md): configure connection, access control, security, rate limiting, and guardrails for the provider you just created
+- [Create an App LLM Proxy](llm-proxies/overview.md): give one application its own endpoint, key, and policies on top of a shared provider
 - [Configure an App LLM Proxy](llm-proxies/configure-proxy.md): add an application-specific endpoint on top of a provider, with its own guardrails and access rules
 - [Manage an App LLM Proxy](llm-proxies/manage-proxy.md): configure provider settings, resources, security, and guardrails for an existing proxy
 - [Invoke providers and proxies via SDKs](using-sdks.md): call your deployed endpoint from the OpenAI, Anthropic, Gemini, Mistral, Azure OpenAI (including Azure AI Foundry), or LangChain software development kits (SDKs)
