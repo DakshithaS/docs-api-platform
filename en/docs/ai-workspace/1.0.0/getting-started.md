@@ -197,9 +197,9 @@ AI Workspace creates the gateway with a status of **Inactive** and opens a **Get
 Its **Configure the gateway** command includes a single-use registration token. This guide uses **Quick Start**. For the other methods, see [Set up an AI Gateway](ai-gateways/setting-up.md).
 
 !!! danger "The registration token is issued once"
-    In [Step 8](#step-8-install-and-start-the-gateway-runtime), copy the **Configure the gateway** command with its **Copy** button so you capture the token with it. If you lose the token, click **Reconfigure** on the gateway's page to issue a new one. Reconfiguring revokes the previous token.
+    In [Step 8](#step-8-install-and-start-the-gateway), copy the **Configure the gateway** command with its **Copy** button so you capture the token with it. If you lose the token, click **Reconfigure** on the gateway's page to issue a new one. Reconfiguring revokes the previous token.
 
-### Step 8: Install and start the gateway runtime
+### Step 8: Install and start the gateway
 
 1. **Download the gateway:**
 
@@ -280,7 +280,7 @@ The provider's **Models** tab lists the models available through it.
 
 3. Click **Save**.
 
-### Step 11: Deploy the provider to your gateway
+### Step 11: Deploy the provider
 
 1. On the provider's page, click **Deploy to Gateway** in the top right corner. This opens a dedicated deployment page listing your gateways.
 2. Confirm the gateway from [Part 2](#part-2-connect-an-ai-gateway) shows a status of **Active**, then click **Deploy** next to it.
@@ -324,7 +324,7 @@ curl -k -X POST "<INVOKE_URL>/v1/chat/completions" \
 ```
 
 !!! tip "Certificate warning?"
-    The `-k` flag accepts the gateway's self-signed certificate, the one its own `setup.sh` generated in [Step 8](#step-8-install-and-start-the-gateway-runtime).
+    The `-k` flag accepts the gateway's self-signed certificate, the one its own `setup.sh` generated in [Step 8](#step-8-install-and-start-the-gateway).
 
 A successful response returns `200 OK` with a chat completion:
 
@@ -348,7 +348,7 @@ A successful response returns `200 OK` with a chat completion:
 }
 ```
 
-Your response's `id`, `created` timestamp, and `content` differ. That's expected. What matters is a `200` status and a `choices` array with a real model reply.
+Your `id`, `created` timestamp, and `content` will differ. A `200` status with a `choices` array confirms the request reached Mistral through your gateway.
 
 At this point, you have a local AI Workspace deployment managing an AI Gateway connected to Mistral AI. You just sent a real chat completion through that gateway with a key you generated yourself. AI Workspace, the AI Gateway, and the upstream provider all worked together to complete that request.
 
@@ -358,7 +358,7 @@ An MCP proxy exposes a Model Context Protocol (MCP) server through AI Workspace,
 
 ### Step 13: Create an MCP proxy
 
-AI Workspace includes a hosted sample MCP server, so you don't need to run one yourself. Because AI Workspace runs on your own machine in this guide, it can also reach an MCP server you run locally. If you have one, paste its URL instead of using the sample.
+AI Workspace includes a hosted sample MCP server, so you don't need to run one yourself. Because AI Workspace runs on your own machine in this guide, it can also reach an MCP server you run locally. If you have one, paste its URL instead of using the sample. Add credentials under **Advanced Configurations** if the server needs them.
 
 1. Navigate to **MCP Proxies** in the left navigation menu, then click **Create MCP Proxy**.
 2. Click **Try with Sample URL**, then click **Fetch Server Info**.
@@ -376,7 +376,7 @@ AI Workspace includes a hosted sample MCP server, so you don't need to run one y
 
 AI Workspace shows a progress tracker with the remaining steps: **Configure Policies** and **Deploy to Gateway & Test**. See [MCP proxies overview](mcp-proxies/overview.md) for what each capability type means.
 
-### Step 14: Deploy the proxy to your gateway
+### Step 14: Deploy the proxy
 
 1. On the proxy's page, click **Deploy to Gateway** in the top right corner. This opens a dedicated deployment page listing your gateways.
 2. Confirm the gateway from [Part 2](#part-2-connect-an-ai-gateway) shows a status of **Active**, then click **Deploy** next to it.
@@ -391,7 +391,7 @@ This part sends a real tool call through your deployed MCP proxy and confirms th
 
 Go back to the proxy's **Overview** tab. Under **MCP Proxy URL**, copy the URL shown, for example `https://localhost:8443/default/everything-mcp/mcp`.
 
-An MCP client starts every session with an `initialize` request. Replace `<MCP_PROXY_URL>` with the URL you copied:
+Every MCP client starts a session with an `initialize` request before it can call a tool. Replace `<MCP_PROXY_URL>` with the URL you copied, then run:
 
 ```bash
 curl -ki -X POST "<MCP_PROXY_URL>" \
@@ -409,7 +409,7 @@ curl -ki -X POST "<MCP_PROXY_URL>" \
   }'
 ```
 
-The `-i` flag prints the response headers. Copy the `Mcp-Session-Id` value. You need it for the next request.
+The `-i` flag prints the response headers. Copy the `Mcp-Session-Id` value. You need it for the next command.
 
 Call the sample `add` tool. Replace `<MCP_PROXY_URL>` and `<SESSION_ID>` with your values:
 
