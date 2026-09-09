@@ -30,7 +30,9 @@ jobs:
           cache-dependency-path: en/requirements.txt
 
       - name: Install dependencies
-        run: pip install -r en/requirements.txt
+        run: |
+          pip install "setuptools<80"
+          pip install -r en/requirements.txt
 
       - name: Build site
         run: mkdocs build
