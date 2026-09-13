@@ -137,7 +137,7 @@ Keep this gateway running for the rest of this guide.
 
 ## Part 3: Configure an LLM provider
 
-An LLM provider connects AI Workspace to an AI service platform, such as OpenAI, Anthropic, or Mistral AI. You give AI Workspace your provider credentials once; the clients that call your gateway never see them. For background, see [LLM providers](llm-providers/overview.md). This part creates a provider, allows a model, deploys the provider to your gateway, and generates an API key.
+An LLM provider connects AI Workspace to an AI service platform, such as OpenAI, Anthropic, or Mistral AI. You give AI Workspace your provider credentials once; the clients that call your gateway never see them. LLM providers belong to the organization, not a single project, so every project in your organization can use the one you create here. For background, see [LLM providers](llm-providers/overview.md). This part creates a provider, allows a model, deploys the provider to your gateway, and generates an API key.
 
 ### Step 5: Configure an LLM provider
 
@@ -206,7 +206,7 @@ This part sends a real chat completion request through your deployed provider an
 
 All requests to the gateway authenticate with the `X-API-Key` header by default. This is the same header named on the provider's **Security** tab. Mistral AI exposes an OpenAI-compatible API at `/v1`, so append that to the Invoke URL to reach the chat completions resource.
 
-The following example assumes the Mistral AI provider from Part 3. If you configured a different kind of provider instead, this exact request path and body don't apply. Anthropic, Gemini, Azure OpenAI, and Azure AI Foundry each use their own native request shape. See [Invoke providers and proxies via SDKs](using-sdks.md) for the equivalent call.
+The following example assumes the Mistral AI provider from Part 3. If you configured a different kind of provider instead, this exact request path and body don't apply. Anthropic and Gemini each use their own native request shape. Azure OpenAI and Azure AI Foundry use the same OpenAI-compatible shape as this example, but need your Azure deployment name instead of a model ID. See [Invoke providers and proxies via SDKs](using-sdks.md) for the equivalent call.
 
 ```bash
 curl -k -X POST "<INVOKE_URL>/v1/chat/completions" \
@@ -251,7 +251,7 @@ At this point, you have an AI Gateway, connected through AI Workspace to Mistral
 
 ## Part 5: Configure an MCP proxy
 
-An MCP proxy exposes a Model Context Protocol (MCP) server through AI Workspace, so any MCP client can discover the server's tools, resources, and prompts through the gateway, with the same authentication and governance as your LLM traffic. For background, see [MCP proxies](mcp-proxies/overview.md). This part creates a proxy from a hosted sample MCP server, then deploys it to your gateway.
+An MCP proxy exposes a Model Context Protocol (MCP) server through AI Workspace, so any MCP client can discover the server's tools, resources, and prompts through the gateway, with the same authentication and governance as your LLM traffic. Unlike an LLM provider, an MCP proxy belongs to a single project, so make sure you're in the right project before you create one. For background, see [MCP proxies](mcp-proxies/overview.md). This part creates a proxy from a hosted sample MCP server, then deploys it to your gateway.
 
 ### Step 9: Create an MCP proxy
 
@@ -265,14 +265,14 @@ AI Workspace includes a hosted sample MCP server, so you don't need to run one y
     AI Workspace fetches the server's capabilities and lists them: 4 tools (including `echo` and `add`), 10 resources, and 3 prompts.
 
     !!! note "Using your own MCP server?"
-        Paste its URL instead of using the sample. It must be reachable from AI Workspace over the internet. AI Workspace fetches its capabilities from the hosted side, so a `localhost` URL won't work. Add credentials under **Advanced Configurations** if the server needs them.
+        Paste its URL instead of using the sample. It must be reachable from AI Workspace over the internet. AI Workspace fetches its capabilities from the hosted side, so a `localhost` URL won't work. Add credentials under **Advanced Configurations** if the server needs them. See [Configure an MCP proxy](mcp-proxies/configure-proxy.md) for details on connecting a protected server.
 
 3. Click **Next**.
 4. Fill in the proxy details:
     - **Name**: a unique name, for example `bijira-mcp-everything`.
     - **Version**: pre-filled, for example `v1.0`.
     - **Description**: optional.
-    - **Context**: pre-filled from the name, for example `/default/bijira-mcp-everything`.
+    - **Context**: pre-filled from the name, prefixed with your project's name, for example `/default/bijira-mcp-everything` for a proxy created in the **Default** project from Part 1.
     - **Target**: pre-filled with the server URL from step 2.
 5. Click **Create**.
 
