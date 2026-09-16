@@ -23,7 +23,9 @@ MCP tool poisoning is a prompt-injection technique. A malicious or compromised M
 
 The MCP Access Control policy is one layer of defense, not a complete solution. It's described precisely in that context throughout this guide.
 
-If you'd rather see the problem in action first, jump to the [companion sample](#try-the-sample).
+The walkthrough below uses a clean public reference server so that you can follow the configuration and filtering flow without interacting with intentionally malicious tool definitions. In this walkthrough, the trusted tool is allowlisted to demonstrate how the gateway evaluates and permits approved tools.
+
+To see the same controls applied to an intentionally poisoned tool, use the [companion sample](#try-the-sample). The sample runs locally and includes a poisoned tool definition so you can observe the gateway detecting and filtering it out.
 
 ## What is MCP tool poisoning?
 
